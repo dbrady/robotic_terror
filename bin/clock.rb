@@ -30,7 +30,14 @@ class Clock
     @center_y ||= @height / 2
   end
 
-  def draw_time_on(surface, time=nil, x=nil, y=nil)
+  def draw_label_on(surface, time=nil, x=10, y=10)
+    time ||= DateTime.now
+    x ||= center_x
+    y ||= center_y
+    surface.font.draw("Time: %2d:%02d:%02d" % [time.hour, time.minute, time.second], x, y, ZOrder::ClockFace, 1.0, 1.0, @face_color)
+  end
+
+  def draw_on(surface, time=nil, x=nil, y=nil)
     time ||= DateTime.now
     x ||= center_x
     y ||= center_y
@@ -83,7 +90,7 @@ class Clock
 end
 
 class ClockWindow < Gosu::Window
-  attr_reader :center_x, :center_y
+  attr_reader :center_x, :center_y, :font
 
   def initialize
     @width, @height = 640, 480
@@ -96,6 +103,13 @@ class ClockWindow < Gosu::Window
     @clock = Clock.new @width, @height
   end
 
+  def capture_and_reset_framecount(new_second)
+    @last_frames = @frames
+    @frames = 0
+    @last_sec = new_second
+  end
+
+
   def draw
     # background
     draw_quad 0,0,0xff000000,
@@ -107,16 +121,13 @@ class ClockWindow < Gosu::Window
     # framerate
     now = DateTime.now
 
-    if @last_sec != now.second
-      @last_frames = @frames
-      @frames = 0
-      @last_sec = now.second
-    end
+    capture_and_reset_framecount(now.second) if @last_sec != now.second
     @frames += 1
-    @font.draw("Time: %2d:%02d:%02d fps: %d" % [now.hour, now.minute, now.second, @last_frames], 10, 10, ZOrder::UI, 1.0, 1.0, 0xffffff00)
+    @font.draw("fps: %d" % [@last_frames], 540, 10, ZOrder::UI, 1.0, 1.0, 0xffffff00)
 
     # art - draw a stoopid clock
-    @clock.draw_time_on self, now
+    @clock.draw_label_on self, now
+    @clock.draw_on self, now
   end
 end
 
