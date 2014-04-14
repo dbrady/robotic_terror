@@ -6,8 +6,36 @@ module ZOrder
 end
 
 class Clock
-  def draw_time_on(time, surface)
+  def initialize(width, height)
+    @width, @height = width, height
+    @second_length = radius * 0.8
+    @minute_length = radius * 0.7
+    @hour_length = radius * 0.5
+
+    @hour_ticks = [0.81, 0.99].map {|t| t*radius}
+    @minute_ticks = [0.9, 0.99].map {|t| t*radius}
+
+    @second_color, @minute_color, @hour_color, @face_color = 0xffff0000, 0xff0000ff, 0xff00ff00, 0xffffffff
+  end
+
+  def radius
+    @radius ||= [@width, @height].min / 2
+  end
+
+  def center_x
+    @center_x ||= @width / 2
+  end
+
+  def center_y
+    @center_y ||= @height / 2
+  end
+
+  def draw_time_on(surface, time=nil, x=nil, y=nil)
+    time ||= DateTime.now
+    x ||= center_x
+    y ||= center_y
     hour, minute, second = time.hour, time.minute, time.second
+    @center_x, @center_y = x, y
 
     # draw clock face
     60.times do |min|
@@ -55,32 +83,25 @@ class Clock
 end
 
 class ClockWindow < Gosu::Window
-  def initialize
-    @size_x, @size_y = 640, 480
-    @center_x, @center_y = @size_x / 2, @size_y / 2
+  attr_reader :center_x, :center_y
 
-    super @size_x, @size_y, false
+  def initialize
+    @width, @height = 640, 480
+    @center_x, @center_y = @width / 2, @height / 2
+
+    super @width, @height, false
     @frames, @last_frames, @last_sec = 0, 0, 0
     @font = Gosu::Font.new(self, 'courier', 20) # Gosu::default_font_name, 20)
-    # $stderr.puts Gosu::default_font_name
 
-    @second_length = @center_y * 0.8
-    @minute_length = @center_y * 0.7
-    @hour_length = @center_y * 0.5
-
-    @hour_ticks = [0.81, 0.99].map {|t| t*@center_y}
-    @minute_ticks = [0.9, 0.99].map {|t| t*@center_y}
-
-    @second_color, @minute_color, @hour_color, @face_color = 0xffff0000, 0xff0000ff, 0xff00ff00, 0xffffffff
-    @clock = Clock.new
+    @clock = Clock.new @width, @height
   end
 
   def draw
     # background
     draw_quad 0,0,0xff000000,
-              @size_x,0,0xff800000,
-              @size_x,@size_y, 0xff008000,
-              0,@size_y, 0xff000080,
+              @width,0,0xff800000,
+              @width,@height, 0xff008000,
+              0,@height, 0xff000080,
               ZOrder::Background
 
     # framerate
@@ -95,7 +116,7 @@ class ClockWindow < Gosu::Window
     @font.draw("Time: %2d:%02d:%02d fps: %d" % [now.hour, now.minute, now.second, @last_frames], 10, 10, ZOrder::UI, 1.0, 1.0, 0xffffff00)
 
     # art - draw a stoopid clock
-    @clock.draw_time_on now, self
+    @clock.draw_time_on self, now
   end
 end
 
