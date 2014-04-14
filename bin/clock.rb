@@ -127,6 +127,10 @@ class ClockWindow < Gosu::Window
     @frames, @last_frames, @last_sec = 0, 0, 0
     @font = Gosu::Font.new(self, 'courier', 20) # Gosu::default_font_name, 20)
 
+    metrics_image = Gosu::Image.from_text(self, "fps: 60", 'courier', 20)
+
+    @framerate_x = @width - (metrics_image.width+10)
+
     @clock = Clock.new @width, @height
     @framerate_counter = FramerateCounter.new 0xffffff00
   end
@@ -139,15 +143,15 @@ class ClockWindow < Gosu::Window
               0,@height, 0xff000080,
               ZOrder::Background
 
-    # framerate
     now = DateTime.now
-
-    @framerate_counter.update
-    @framerate_counter.draw_on self, 540, 10
 
     # art - draw a stoopid clock
     @clock.draw_label_on self, now
     @clock.draw_on self, now
+    @framerate_counter.update
+
+    # UI crap - framerate
+    @framerate_counter.draw_on self, @framerate_x, 10
   end
 end
 
