@@ -46,14 +46,14 @@ class Clock
 
     # draw clock face
     60.times do |min|
-      x1, y1 = hand_endpoints ticks_to_degrees(min, 60), @minute_ticks.first
-      x2, y2 = hand_endpoints ticks_to_degrees(min, 60), @minute_ticks.last
+      x1, y1 = hand_endpoints ticks_to_angle(min, 60), @minute_ticks.first
+      x2, y2 = hand_endpoints ticks_to_angle(min, 60), @minute_ticks.last
       surface.draw_line x1, y1, @face_color, x2, y2, @face_color, ZOrder::ClockFace
     end
 
     12.times do |hr|
-      x1, y1 = hand_endpoints ticks_to_degrees(hr, 12), @hour_ticks.first
-      x2, y2 = hand_endpoints ticks_to_degrees(hr, 12), @hour_ticks.last
+      x1, y1 = hand_endpoints ticks_to_angle(hr, 12), @hour_ticks.first
+      x2, y2 = hand_endpoints ticks_to_angle(hr, 12), @hour_ticks.last
       surface.draw_line x1, y1, @face_color, x2, y2, @face_color, ZOrder::ClockFace
     end
 
@@ -67,8 +67,8 @@ class Clock
     draw_hour_hand_on surface, hour
   end
 
-  def ticks_to_degrees(ticks, ticks_per_revolution)
-    ticks*360.0/ticks_per_revolution-90
+  def ticks_to_angle(ticks, ticks_per_revolution)
+    (2*Math::PI*ticks)/ticks_per_revolution.to_f-(Math::PI/2)
   end
 
   def draw_hand_on(surface, angle, length, color)
@@ -77,19 +77,19 @@ class Clock
   end
 
   def draw_second_hand_on(surface, second)
-    draw_hand_on surface, ticks_to_degrees(second, 60), @second_length, @second_color
+    draw_hand_on surface, ticks_to_angle(second, 60), @second_length, @second_color
   end
 
   def draw_minute_hand_on(surface, minute)
-    draw_hand_on surface, ticks_to_degrees(minute, 60), @minute_length, @minute_color
+    draw_hand_on surface, ticks_to_angle(minute, 60), @minute_length, @minute_color
   end
 
   def draw_hour_hand_on(surface, hour)
-    draw_hand_on surface, ticks_to_degrees(hour, 12), @hour_length, @hour_color
+    draw_hand_on surface, ticks_to_angle(hour, 12), @hour_length, @hour_color
   end
 
-  def hand_endpoints(degrees, length)
-    [Math::cos(Math::PI*degrees/180.0)*length+@center_x, Math::sin(Math::PI*degrees/180.0)*length+@center_y]
+  def hand_endpoints(angle, length)
+    [Math::cos(angle)*length+@center_x, Math::sin(angle)*length+@center_y]
   end
 end
 
