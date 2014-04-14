@@ -46,14 +46,14 @@ class Clock
 
     # draw clock face
     60.times do |min|
-      x1, y1 = hand_endpoints minutes_to_degrees(min), @minute_ticks.first
-      x2, y2 = hand_endpoints minutes_to_degrees(min), @minute_ticks.last
+      x1, y1 = hand_endpoints ticks_to_degrees(min, 60), @minute_ticks.first
+      x2, y2 = hand_endpoints ticks_to_degrees(min, 60), @minute_ticks.last
       surface.draw_line x1, y1, @face_color, x2, y2, @face_color, ZOrder::ClockFace
     end
 
     12.times do |hr|
-      x1, y1 = hand_endpoints hours_to_degrees(hr), @hour_ticks.first
-      x2, y2 = hand_endpoints hours_to_degrees(hr), @hour_ticks.last
+      x1, y1 = hand_endpoints ticks_to_degrees(hr, 12), @hour_ticks.first
+      x2, y2 = hand_endpoints ticks_to_degrees(hr, 12), @hour_ticks.last
       surface.draw_line x1, y1, @face_color, x2, y2, @face_color, ZOrder::ClockFace
     end
 
@@ -62,30 +62,34 @@ class Clock
     minute += second/60.0
     hour += minute/60.0
 
-    second_x, second_y = hand_endpoints seconds_to_degrees(second), @second_length
-    hour_x, hour_y = hand_endpoints hours_to_degrees(hour), @hour_length
-    minute_x, minute_y = hand_endpoints minutes_to_degrees(minute), @minute_length
+    draw_second_hand_on surface, second
+    draw_minute_hand_on surface, minute
+    draw_hour_hand_on surface, hour
+  end
 
+  def ticks_to_degrees(ticks, ticks_per_revolution)
+    ticks*360.0/ticks_per_revolution-90
+  end
 
-    surface.draw_line @center_x, @center_y, @second_color, second_x, second_y, @second_color, ZOrder::ClockHands
-    surface.draw_line @center_x, @center_y, @minute_color, minute_x, minute_y, @minute_color, ZOrder::ClockHands
-    surface.draw_line @center_x, @center_y, @hour_color, hour_x, hour_y, @hour_color, ZOrder::ClockHands
+  def draw_hand_on(surface, angle, length, color)
+    x, y = hand_endpoints angle, length
+    surface.draw_line @center_x, @center_y, color, x, y, color, ZOrder::ClockHands
+  end
+
+  def draw_second_hand_on(surface, second)
+    draw_hand_on surface, ticks_to_degrees(second, 60), @second_length, @second_color
+  end
+
+  def draw_minute_hand_on(surface, minute)
+    draw_hand_on surface, ticks_to_degrees(minute, 60), @minute_length, @minute_color
+  end
+
+  def draw_hour_hand_on(surface, hour)
+    draw_hand_on surface, ticks_to_degrees(hour, 12), @hour_length, @hour_color
   end
 
   def hand_endpoints(degrees, length)
     [Math::cos(Math::PI*degrees/180.0)*length+@center_x, Math::sin(Math::PI*degrees/180.0)*length+@center_y]
-  end
-
-  def seconds_to_degrees(second)
-    second*360/60.0-90
-  end
-
-  def minutes_to_degrees(minute)
-    minute*360/60.0-90
-  end
-
-  def hours_to_degrees(hour)
-    hour*360/12.0-90
   end
 end
 
