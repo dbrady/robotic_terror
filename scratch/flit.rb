@@ -56,7 +56,7 @@ class Point2D
 end
 
 class Boid
-  def initialize(x=0, y=0, facing=0.0, speed=0.0)
-    @x, @y, @facing, @speed = x, y, facing, speed
+  def initialize(position, facing, speed)
+    @position, @facing, @speed = position, facing, speed
   end
 end
