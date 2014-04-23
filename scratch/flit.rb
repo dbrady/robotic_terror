@@ -1,62 +1,183 @@
 require 'gosu'
+require_relative '../lib/point2d'
+require_relative '../lib/framerate_counter'
+require 'time'
 
 # this is a scratch/doodle program to see if I can get gosu to track
-# the mouse cursor. A triangular "boid" is placed into the window, and
-# it flies around and/or just sits there. When the user clicks on the
-# screen, the boid flits to that point. If that proves insufficiently
-# interesting, upgrade the boid to be constantly moving and let the
-# player drop waypoints that the boid must fly to.
+# the mouse cursor. A target and a triangular "boid" are placed into
+# the window, and the boid flits to the target. Clicking the screen
+# places the target. Boid can either stop or wander aimlessly once it
+# reaches the target, don't care.
 
-# Key features to try out with this scratch:
+# TODO / Key features to try out with this scratch:
 #
-# - Mouse Input
 # - Exit on ESC or Ctrl-X
+# - drop a random target whenever the boid reaches the target
+# - Mouse Input drops a target
 # - Fullscreen mode
+# - Mouse input drops a waypoint; additional clicks drop additional
+#     waypoints
 
-require 'ostruct'
-
-class Point2D
-  attr_reader :x, :y
-  
-  def initialize(x, y)
-    @x, @y = x, y
-  end
-
-  def +(point)
-    Point2D.new(x+point.x, y+point.y)
-  end
-
-  def -(point)
-    self + -point
-  end
-
-  def -@
-    Point2D.new(-x, -y)
-  end
-
-  # * and / are used exclusively for scaling! Don't give me any of
-  # that crap about how dot and cross products are different and
-  # stuff. Go bite a tree.
-  def *(scale)
-    Point2D.new(x*scale, y*scale)
-  end
-
-  # / is used exclusively for scaling! If you try to assert that /
-  # could be interpreted as the cross product of the inverse, then
-  # you're not only willfully being pedantic, you're also wrong. See
-  # the documentation for #*; who told you you could stop biting that
-  # tree?
-  def /(scale)
-    Point2D.new(x/scale, y/scale)
-  end
-  
-  def ==(point)
-    x == point.x && y == point.y
-  end
+module ZOrder
+  Background, GameBoidPoop, GameTarget, GameBoid, UI = *0..4
 end
 
 class Boid
-  def initialize(position, facing, speed)
-    @position, @facing, @speed = position, facing, speed
+  attr_reader :z, :position, :facing, :speed, :target
+
+  MAX_SPEED = 0.3
+
+  NOSE_COLOR = 0xffffffff
+  TAIL_COLOR = 0xffff0000
+  LENGTH = 20.0
+  WIDTH = 10.0
+
+  def initialize(x, y, facing=0.0, speed=MAX_SPEED, z=ZOrder::GameBoid)
+    @z=0
+    set_position x, y
+    @facing, @speed = facing, speed
+  end
+
+  def set_position(x, y)
+    @position = Point2D.new(x,y)
+  end
+
+  def set_target(target_x, target_y)
+    @target = Point2D.new(target_x, target_y)
+    turn_to_face(@target)
+    @speed = MAX_SPEED
+  end
+
+  def move
+    speed_vector = Point2D.new Math::cos(facing) * speed, Math::sin(facing) * speed
+    @position = position + speed_vector
+  end
+
+  def x; position.x; end
+  def y; position.y; end
+
+  def draw_on(surface)
+    points = [
+              [LENGTH/2.0, 0.0, NOSE_COLOR],
+              [-LENGTH/2.0, -WIDTH/2.0, TAIL_COLOR],
+              [-LENGTH/2.0, WIDTH/2.0, TAIL_COLOR]
+             ]
+    cos_t = Math::cos facing
+    sin_t = Math::sin facing
+    points = points.map {|x, y, c| [
+                                    (cos_t * x - sin_t * y) + position.x,
+                                    (sin_t * x + cos_t * y) + position.y,
+                                    c
+                                   ]}.flatten
+    surface.draw_triangle *points
+  end
+
+  private
+
+  def turn_to_face(target)
+    @facing = position.angle_to target
   end
 end
+
+class Target
+  attr_accessor :x, :y, :z
+
+  COLOR = 0xffffff00
+  RADIUS = 5.0
+
+  def initialize(x, y, z=ZOrder::GameTarget)
+    @x, @y, @z = x, y, z
+  end
+
+  def set_position(x, y)
+    @x, @y = x, y
+  end
+
+  def draw_on(surface)
+    surface.draw_quad x+RADIUS, y+RADIUS, COLOR,
+                      x+RADIUS, y-RADIUS, COLOR,
+                      x-RADIUS, y-RADIUS, COLOR,
+                      x-RADIUS, y+RADIUS, COLOR,
+                      z
+  end
+end
+
+class BoidPoop
+  attr_reader :x, :y, :z
+
+  COLOR = 0xff990000
+  RADIUS = 1.0
+
+  def initialize(x, y, z=ZOrder::GameBoidPoop)
+    @x, @y, @z = x, y, z
+  end
+
+  def draw_on(surface)
+    surface.draw_quad x+RADIUS, y+RADIUS, COLOR,
+                      x+RADIUS, y-RADIUS, COLOR,
+                      x-RADIUS, y-RADIUS, COLOR,
+                      x-RADIUS, y+RADIUS, COLOR,
+                      z
+  end
+end
+
+class FlitWindow < Gosu::Window
+  attr_reader :center_x, :center_y, :font
+
+  def initialize
+    @width, @height = 1920, 1080
+    @center_x, @center_y = @width / 2, @height / 2
+
+    super @width, @height, true
+    @target = Target.new 0, 0
+    @poops = []
+    @boid = Boid.new @center_x, @center_y, 0.0, 0.0, ZOrder::GameBoid
+
+    @font = Gosu::Font.new(self, 'courier', 20) # Gosu::default_font_name, 20)
+    metrics_image = Gosu::Image.from_text(self, "fps: 60", 'courier', 20)
+    @framerate_x = @width - (metrics_image.width+10)
+    @last_sec = -1
+    @framerate_counter = FramerateCounter.new 0xffffff00
+  end
+
+  def button_down(id)
+    exit if id == 1 # ESC key
+  end
+
+  def draw
+    @framerate_counter.update
+
+    # Move target around in a circle
+    now = DateTime.now
+    angle = Math::PI * 2 * (now.second + now.second_fraction) / 60.0
+    dist = @height / 3.0
+    target_x = @center_x + Math::cos(angle) * dist
+    target_y = @center_y + Math::sin(angle) * dist
+
+    @target.set_position target_x, target_y
+
+    if @last_sec != now.second
+      @poops.push BoidPoop.new(@boid.x, @boid.y)
+      @poops.shift if @poops.size > 1000
+      @last_sec = now.second
+    end
+
+    @boid.set_target @target.x, @target.y
+    @boid.move
+
+    # draw stuff
+    draw_background_on self
+    @poops.each {|poop| poop.draw_on self }
+    @target.draw_on self
+    @boid.draw_on self
+    @framerate_counter.draw_on self, @framerate_x, 10
+  end
+
+  private
+
+  def draw_background_on(surface)
+    surface.draw_quad 0,0,0, 0,height,0, width,height,0, width,0,0, ZOrder::Background
+  end
+end
+
+FlitWindow.new.show

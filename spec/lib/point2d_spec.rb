@@ -1,11 +1,11 @@
 require 'minitest/autorun'
-
-require_relative '../../scratch/flit'
+require_relative '../../lib/point2d'
 
 describe Point2D do
   before do
     @point = Point2D.new 3, 4
     @point2 = Point2D.new 1, 3
+    @origin = Point2D.new 0, 0
   end
 
   describe '#==' do
@@ -14,9 +14,9 @@ describe Point2D do
     end
   end
 
-  # describe '#close_to?' do
+  # describe '#close_to?(dist: nil, dist2: nil)' do
   # end
-  
+
   describe '#-@ (unary minus)' do
     it "inverts point's x and y" do
       assert_equal -@point, Point2D.new(-3, -4)
@@ -53,4 +53,9 @@ describe Point2D do
     end
   end
 
+  describe "angle_to" do
+    it "returns angle from source to target" do
+      assert_in_epsilon @origin.angle_to(@point), 0.927295
+    end
+  end
 end
