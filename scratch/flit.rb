@@ -25,7 +25,7 @@ end
 class Boid
   attr_reader :z, :position, :facing, :speed, :target
 
-  MAX_SPEED = 0.3
+  MAX_SPEED = 10.0
 
   NOSE_COLOR = 0xffffffff
   TAIL_COLOR = 0xffff0000
@@ -52,6 +52,11 @@ class Boid
     @target = Point2D.new(target_x, target_y)
     turn_to_face(@target)
     @speed = MAX_SPEED
+  end
+
+  def clear_target
+    @target = nil
+    @speed = 0.0
   end
 
   def move
@@ -83,7 +88,7 @@ class Target
   COLOR = 0xffffff00
   RADIUS = 5.0
 
-  def initialize(x, y, z=ZOrder::GameTarget)
+  def initialize(x=0.0, y=0.0, z=ZOrder::GameTarget)
     @x, @y, @z = x, y, z
   end
 
@@ -123,6 +128,9 @@ class Crosshair
   attr_reader :width, :height, :x, :y, :z
 
   COLOR = 0xffff0000
+  RETICLE_RADIUS = 5.0
+  INNER_RADIUS = 10.0
+  OUTER_RADIUS = 40.0
 
   def initialize(width, height, x=0.0, y=0.0, z=ZOrder::UI)
     @height, @width, @x, @y, @z = height, width, x, y, z
@@ -133,8 +141,13 @@ class Crosshair
   end
 
   def draw_on(surface)
-    surface.draw_line x, 0, COLOR, x, height, COLOR, z
-    surface.draw_line 0, y, COLOR, width, y, COLOR, z
+    surface.draw_line x, y-RETICLE_RADIUS, COLOR, x, y+RETICLE_RADIUS, COLOR, z
+    surface.draw_line x-RETICLE_RADIUS, y, COLOR, x+RETICLE_RADIUS, y, COLOR, z
+
+    surface.draw_line x+INNER_RADIUS, y, COLOR, x+OUTER_RADIUS, y, 0, z
+    surface.draw_line x-INNER_RADIUS, y, COLOR, x-OUTER_RADIUS, y, 0, z
+    surface.draw_line x, y+INNER_RADIUS, COLOR, x, y+OUTER_RADIUS, 0, z
+    surface.draw_line x, y-INNER_RADIUS, COLOR, x, y-OUTER_RADIUS, 0, z
   end
 end
 
@@ -147,10 +160,10 @@ class FlitWindow < Gosu::Window
     @center_x, @center_y = @width / 2, @height / 2
 
     super @width, @height, true
-    @target = Target.new 0, 0
+    @target = nil
     @poops = []
     @boid = Boid.new @center_x, @center_y, 0.0, 0.0, ZOrder::GameBoid
-
+    #@boid.set_target @target.x, @target.y
     @font = Gosu::Font.new(self, 'courier', 20) # Gosu::default_font_name, 20)
     metrics_image = Gosu::Image.from_text(self, "fps: 60", 'courier', 20)
     @framerate_x = @width - (metrics_image.width+10)
@@ -161,25 +174,42 @@ class FlitWindow < Gosu::Window
 
   def button_down(id)
     exit if id == 1 # ESC key
+    # Use this for target-on-click
+    # if id == Gosu::MsLeft
+    #   @target = Target.new mouse_x, mouse_y
+    #   boid.set_target target.x, target.y
+    # end
   end
 
   def update
-    now = DateTime.now
-    angle = Math::PI * 2 * (now.second + now.second_fraction) / 60.0
-    dist = height / 3.0
-    target_x = center_x + Math::cos(angle) * dist
-    target_y = center_y + Math::sin(angle) * dist
-
-    target.set_position target_x, target_y
-
-    if @last_sec != now.second
-      poops.push BoidPoop.new(boid.x, boid.y)
-      poops.shift if poops.size > 1000
-      @last_sec = now.second
+    # Use this for draggable target
+    if button_down?(Gosu::MsLeft)
+      @target = Target.new unless target
+      @target.set_position mouse_x, mouse_y
+      boid.set_target target.x, target.y
     end
 
-    boid.set_target target.x, target.y
-    boid.move
+
+    if target_available?
+      if target_reached?
+        # destroy target
+        @target = nil
+        boid.clear_target
+      else
+        boid.move
+      end
+    else
+      # boid sits around, bored
+    end
+
+    now = DateTime.now
+    frac = (now.second_fraction * 100).to_i
+    if @last_sec != frac
+      poops.push BoidPoop.new(boid.x, boid.y)
+      poops.shift if poops.size > 1000
+      @last_sec = frac
+    end
+
     crosshair.set_position mouse_x, mouse_y
   end
 
@@ -189,7 +219,7 @@ class FlitWindow < Gosu::Window
     # draw stuff
     draw_background_on self
     poops.each {|poop| poop.draw_on self }
-    target.draw_on self
+    target.draw_on self if target
     boid.draw_on self
     framerate_counter.draw_on self, @framerate_x, 10
     crosshair.draw_on self
@@ -197,9 +227,25 @@ class FlitWindow < Gosu::Window
 
   private
 
+  def target_available?
+    !target.nil?
+  end
+
+  def target_reached?
+    (target.x-boid.x).abs < Boid::MAX_SPEED && (target.y-boid.y).abs < Boid::MAX_SPEED
+  end
+
+  def random_target
+    Target.new rand(width), rand(height)
+  end
+
   def draw_background_on(surface)
     surface.draw_quad 0,0,0, 0,height,0, width,height,0, width,0,0, ZOrder::Background
   end
 end
 
-FlitWindow.new.show
+if $0 == __FILE__
+  # srand Time.now.to_i
+  srand 42
+  FlitWindow.new.show
+end

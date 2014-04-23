@@ -26,15 +26,16 @@ describe Boid do
     end
 
     it "moves the boid" do
+      speed = Boid::MAX_SPEED
       @boid.set_target 100, 4
-      assert_equal @boid.speed, 10 # this spec depends on Boid::MAX_SPEED==10
+      assert_equal @boid.speed, speed
       assert_in_epsilon @boid.facing, 0.0
       @boid.move
-      assert_equal @boid.position, Point2D.new(13.0, 4.0)
-      @boid.set_target 13.0, 100.0
+      assert_equal @boid.position, Point2D.new(3.0+speed, 4.0)
+      @boid.set_target 3.0+speed, 100.0
       assert_in_epsilon @boid.facing, Math::PI/2
       @boid.move
-      assert_equal @boid.position, Point2D.new(13.0, 14.0)
+      assert_equal @boid.position, Point2D.new(3.0+speed, 4.0+speed)
     end
   end
 end
