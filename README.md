@@ -22,7 +22,7 @@ Good freaking luck.
 1. Reread the section entitled, 'General'.
 2. Google for "Gosu getting started on linux".
 3. Take a moment to appreciate just how much stuff is required, and
-therefore how incredible improbable it is that this will ever work
+therefore how incredibly improbable it is that this will ever work
 4. Install all those requirements.
 5. If they all installed with no errors, there is a slim chance that
 this will work. Hooray!
