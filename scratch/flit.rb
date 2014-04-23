@@ -11,10 +11,10 @@ require 'time'
 
 # TODO / Key features to try out with this scratch:
 #
-# - Exit on ESC or Ctrl-X
+# x Exit on ESC or Ctrl-X
 # - drop a random target whenever the boid reaches the target
 # - Mouse Input drops a target
-# - Fullscreen mode
+# x Fullscreen mode
 # - Mouse input drops a waypoint; additional clicks drop additional
 #     waypoints
 
@@ -121,6 +121,25 @@ class BoidPoop
   end
 end
 
+class Crosshair
+  attr_reader :width, :height, :x, :y, :z
+
+  COLOR = 0xffff0000
+
+  def initialize(width, height, x=0.0, y=0.0, z=ZOrder::UI)
+    @height, @width, @x, @y, @z = height, width, x, y, z
+  end
+
+  def set_position(x, y)
+    @x, @y = x, y
+  end
+
+  def draw_on(surface)
+    surface.draw_line x, 0, COLOR, x, height, COLOR, z
+    surface.draw_line 0, y, COLOR, width, y, COLOR, z
+  end
+end
+
 class FlitWindow < Gosu::Window
   attr_reader :center_x, :center_y, :font
 
@@ -137,6 +156,7 @@ class FlitWindow < Gosu::Window
     metrics_image = Gosu::Image.from_text(self, "fps: 60", 'courier', 20)
     @framerate_x = @width - (metrics_image.width+10)
     @last_sec = -1
+    @crosshair = Crosshair.new @width, @height
     @framerate_counter = FramerateCounter.new 0xffffff00
   end
 
@@ -144,9 +164,7 @@ class FlitWindow < Gosu::Window
     exit if id == 1 # ESC key
   end
 
-  def draw
-    @framerate_counter.update
-
+  def update
     # Move target around in a circle
     now = DateTime.now
     angle = Math::PI * 2 * (now.second + now.second_fraction) / 60.0
@@ -164,6 +182,11 @@ class FlitWindow < Gosu::Window
 
     @boid.set_target @target.x, @target.y
     @boid.move
+    @crosshair.set_position mouse_x, mouse_y
+  end
+
+  def draw
+    @framerate_counter.update
 
     # draw stuff
     draw_background_on self
@@ -171,6 +194,7 @@ class FlitWindow < Gosu::Window
     @target.draw_on self
     @boid.draw_on self
     @framerate_counter.draw_on self, @framerate_x, 10
+    @crosshair.draw_on self
   end
 
   private
