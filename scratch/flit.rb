@@ -139,7 +139,8 @@ class Crosshair
 end
 
 class FlitWindow < Gosu::Window
-  attr_reader :center_x, :center_y, :font
+  attr_reader :center_x, :center_y, :font, :height, :width
+  attr_reader :target, :boid, :poops, :crosshair, :framerate_counter
 
   def initialize
     @width, @height = 1920, 1080
@@ -163,36 +164,35 @@ class FlitWindow < Gosu::Window
   end
 
   def update
-    # Move target around in a circle
     now = DateTime.now
     angle = Math::PI * 2 * (now.second + now.second_fraction) / 60.0
-    dist = @height / 3.0
-    target_x = @center_x + Math::cos(angle) * dist
-    target_y = @center_y + Math::sin(angle) * dist
+    dist = height / 3.0
+    target_x = center_x + Math::cos(angle) * dist
+    target_y = center_y + Math::sin(angle) * dist
 
-    @target.set_position target_x, target_y
+    target.set_position target_x, target_y
 
     if @last_sec != now.second
-      @poops.push BoidPoop.new(@boid.x, @boid.y)
-      @poops.shift if @poops.size > 1000
+      poops.push BoidPoop.new(boid.x, boid.y)
+      poops.shift if poops.size > 1000
       @last_sec = now.second
     end
 
-    @boid.set_target @target.x, @target.y
-    @boid.move
-    @crosshair.set_position mouse_x, mouse_y
+    boid.set_target target.x, target.y
+    boid.move
+    crosshair.set_position mouse_x, mouse_y
   end
 
   def draw
-    @framerate_counter.update
+    framerate_counter.update
 
     # draw stuff
     draw_background_on self
-    @poops.each {|poop| poop.draw_on self }
-    @target.draw_on self
-    @boid.draw_on self
-    @framerate_counter.draw_on self, @framerate_x, 10
-    @crosshair.draw_on self
+    poops.each {|poop| poop.draw_on self }
+    target.draw_on self
+    boid.draw_on self
+    framerate_counter.draw_on self, @framerate_x, 10
+    crosshair.draw_on self
   end
 
   private
