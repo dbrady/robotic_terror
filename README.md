@@ -11,6 +11,17 @@ Gosu programlets in the `scratch/` folder.
 Oh, and I guess you could always run `bin/robotic_terror` to see if
 the game exists yet.
 
+# Wait, There's Actually Stuff Here
+
+Assuming you have Ruby and Gosu working, the following scratch doodles
+work:
+
+* `scratch/clock.rb` Draws an analog clock with sweeping hands. Nice.
+
+* `scratch/flit.rb` Draws a bunch of waypoints, then a ship flits
+  between them. Runs fullscreen. Has a cool crosshair that you can
+  control with the mouse to drop additional waypoints with.
+
 # Installation
 
 ## General
