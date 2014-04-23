@@ -12,14 +12,17 @@ require 'time'
 # TODO / Key features to try out with this scratch:
 #
 # x Exit on ESC or Ctrl-X
-# - drop a random target whenever the boid reaches the target
-# - Mouse Input drops a target
+# x drop a random target whenever the boid reaches the target
+# x Mouse Input drops a target
 # x Fullscreen mode
-# - Mouse input drops a waypoint; additional clicks drop additional
+# x Mouse input drops a waypoint; additional clicks drop additional
 #     waypoints
+# - Add accel/turn thrusters to boid. Boid decelerates and turns
+#     towards target if target is behind it; as soon as it is mostly
+#     pointed towards target it can begin accelerating again
 
 module ZOrder
-  Background, GameBoidPoop, GameTarget, GameBoid, UI = *0..4
+  Background, GameBoidPoop, GameTargetPath, GameTarget, GameBoid, UI = *0..5
 end
 
 class Boid
@@ -153,19 +156,22 @@ end
 
 class FlitWindow < Gosu::Window
   attr_reader :center_x, :center_y, :font, :height, :width
-  attr_reader :target, :boid, :poops, :crosshair, :framerate_counter
+  attr_reader :target, :targets, :boid, :poops, :crosshair, :framerate_counter
 
   def initialize
     @width, @height = 1920, 1080
     @center_x, @center_y = @width / 2, @height / 2
 
     super @width, @height, true
-    @target = nil
+    @targets = []
     @poops = []
     @boid = Boid.new @center_x, @center_y, 0.0, 0.0, ZOrder::GameBoid
-    #@boid.set_target @target.x, @target.y
     @font = Gosu::Font.new(self, 'courier', 20) # Gosu::default_font_name, 20)
     metrics_image = Gosu::Image.from_text(self, "fps: 60", 'courier', 20)
+    3.times do
+      targets.push random_target
+    end
+    boid.set_target targets.first.x, targets.first.y
     @framerate_x = @width - (metrics_image.width+10)
     @last_sec = -1
     @crosshair = Crosshair.new @width, @height
@@ -174,27 +180,32 @@ class FlitWindow < Gosu::Window
 
   def button_down(id)
     exit if id == 1 # ESC key
-    # Use this for target-on-click
-    # if id == Gosu::MsLeft
-    #   @target = Target.new mouse_x, mouse_y
-    #   boid.set_target target.x, target.y
-    # end
   end
 
   def update
     # Use this for draggable target
     if button_down?(Gosu::MsLeft)
-      @target = Target.new unless target
+      @dragging = true
+      @target = Target.new unless @target
       @target.set_position mouse_x, mouse_y
-      boid.set_target target.x, target.y
+    else
+      if @dragging
+        # We WERE dragging a target; add it to the collection now
+        @dragging = false
+        @targets.push @target
+        @target = nil
+      end
     end
-
 
     if target_available?
       if target_reached?
-        # destroy target
-        @target = nil
-        boid.clear_target
+        targets.shift
+        targets.push random_target if targets.size < 3
+        if target_available?
+          boid.set_target targets.first.x, targets.first.y
+        else
+          boid.clear_target
+        end
       else
         boid.move
       end
@@ -213,13 +224,13 @@ class FlitWindow < Gosu::Window
     crosshair.set_position mouse_x, mouse_y
   end
 
+  # draw scene: background, player's trail of dots, targets, boid/player, UI
   def draw
     framerate_counter.update
 
-    # draw stuff
     draw_background_on self
     poops.each {|poop| poop.draw_on self }
-    target.draw_on self if target
+    draw_targets_on self
     boid.draw_on self
     framerate_counter.draw_on self, @framerate_x, 10
     crosshair.draw_on self
@@ -228,15 +239,30 @@ class FlitWindow < Gosu::Window
   private
 
   def target_available?
-    !target.nil?
+    !targets.empty?
   end
 
   def target_reached?
+    return false if targets.empty?
+    target = targets.first
     (target.x-boid.x).abs < Boid::MAX_SPEED && (target.y-boid.y).abs < Boid::MAX_SPEED
   end
 
   def random_target
     Target.new rand(width), rand(height)
+  end
+
+  def draw_targets_on(surface)
+    targetses = (targets + [target]).compact
+    if targetses
+      # Draw connecting path
+      (targetses.size-1).times do |i|
+        t1 = targetses[i]
+        t2 = targetses[i+1]
+        surface.draw_line t1.x, t1.y, 0xff00ff00, t2.x, t2.y, 0xff00ff00, ZOrder::GameTargetPath
+      end
+      targetses.each {|target| target.draw_on surface }
+    end
   end
 
   def draw_background_on(surface)
