@@ -17,6 +17,7 @@ require 'time'
 # x Fullscreen mode
 # x Mouse input drops a waypoint; additional clicks drop additional
 #     waypoints
+# x Add instructions
 # - Add accel/turn thrusters to boid. Boid decelerates and turns
 #     towards target if target is behind it; as soon as it is mostly
 #     pointed towards target it can begin accelerating again
@@ -173,6 +174,7 @@ class FlitWindow < Gosu::Window
     end
     boid.set_target targets.first.x, targets.first.y
     @framerate_x = @width - (metrics_image.width+10)
+    @line_height = metrics_image.height
     @last_sec = -1
     @crosshair = Crosshair.new @width, @height
     @framerate_counter = FramerateCounter.new 0xffffff00
@@ -232,8 +234,7 @@ class FlitWindow < Gosu::Window
     poops.each {|poop| poop.draw_on self }
     draw_targets_on self
     boid.draw_on self
-    framerate_counter.draw_on self, @framerate_x, 10
-    crosshair.draw_on self
+    draw_ui_on self
   end
 
   private
@@ -250,6 +251,13 @@ class FlitWindow < Gosu::Window
 
   def random_target
     Target.new rand(width), rand(height)
+  end
+
+  def draw_ui_on(surface)
+    framerate_counter.draw_on self, @framerate_x, 10
+    crosshair.draw_on self
+    font.draw "Use mouse to place waypoints", 10, 10, ZOrder::UI, 1.0, 1.0, 0xffffff00
+    font.draw "ESC to exit", 10, 10+@line_height, ZOrder::UI, 1.0, 1.0, 0xffffff00
   end
 
   def draw_targets_on(surface)
