@@ -36,6 +36,12 @@ class Boid
     @z=0
     set_position x, y
     @facing, @speed = facing, speed
+
+    @hull_points = [
+                    [LENGTH/2.0, 0.0, NOSE_COLOR],
+                    [-LENGTH/2.0, -WIDTH/2.0, TAIL_COLOR],
+                    [-LENGTH/2.0, WIDTH/2.0, TAIL_COLOR]
+                   ].flatten
   end
 
   def set_position(x, y)
@@ -57,19 +63,11 @@ class Boid
   def y; position.y; end
 
   def draw_on(surface)
-    points = [
-              [LENGTH/2.0, 0.0, NOSE_COLOR],
-              [-LENGTH/2.0, -WIDTH/2.0, TAIL_COLOR],
-              [-LENGTH/2.0, WIDTH/2.0, TAIL_COLOR]
-             ]
-    cos_t = Math::cos facing
-    sin_t = Math::sin facing
-    points = points.map {|x, y, c| [
-                                    (cos_t * x - sin_t * y) + position.x,
-                                    (sin_t * x + cos_t * y) + position.y,
-                                    c
-                                   ]}.flatten
-    surface.draw_triangle *points
+    surface.translate(x,y) do
+      surface.rotate(Gosu.radians_to_degrees(facing)) do
+        surface.draw_triangle *@hull_points
+      end
+    end
   end
 
   private
