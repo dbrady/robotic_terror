@@ -3,5 +3,5 @@
 # command line using echo statements, I am not, in fact, smart enough to
 # figure out how to make minitest easily autorun the entire spec suite when
 # in minitest/spec mode. LOL/dumb
-echo "find spec -type f | xargs ruby"
-find spec -type f | xargs ruby
+echo 'find spec -type f -exec echo "./{}" \; | xargs bundle exec ruby -r'
+find spec -type f -exec echo "./{}" \; | xargs bundle exec ruby -r
